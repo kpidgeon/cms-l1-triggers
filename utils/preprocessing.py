@@ -1,3 +1,5 @@
+import numpy as np
+
 def resize(hist: np.ndarray, bin_x: int, bin_y: int) -> np.ndarray:
     """
     Resize a 2D histogram i.e. change the bin resolution for a histogram of
