@@ -2,10 +2,9 @@ import numpy as np
 
 
 
-def confusion_matrix_components(true, pred):
+def _confusion_matrix(true, pred):
     
     tn, fp, fn, tp = 0, 0, 0, 0
-    
     
     for i in range(len(true)):
         
@@ -21,23 +20,6 @@ def confusion_matrix_components(true, pred):
                 fp += 1
     
     return tn, fp, fn, tp
-
-
-
-
-def _confusion_matrix(true, pred, thresholds):
-    
-    tn, fp, fn, tp = [], [], [], []
-    for t in thresholds:
-        
-        _tn, _fp, _fn, _tp = confusion_matrix_components(true, pred)
-        
-        tn.append(_tn)
-        fp.append(_fp)
-        fn.append(_fn)
-        tp.append(_tp)
-        
-    return np.array(tn), np.array(fp), np.array(fn), np.array(tp)
 
 
 
@@ -77,9 +59,6 @@ def eff_rate(fpr, tpr, thresholds, bg_rate, true=None, pred=None, errors=None):
         The signal efficiencies (a.k.a sensitivity) and corresponding errors
         (errors are zero if type unspecified).    
     """
-    
-    if true.shape != pred.shape:
-        raise ValueError('true and pred should be 1D arrays of the same length.')
         
 
     rates = fpr*bg_rate
@@ -89,14 +68,27 @@ def eff_rate(fpr, tpr, thresholds, bg_rate, true=None, pred=None, errors=None):
     effs_errs = np.zeros(effs.shape)
     
     if errors == 'binomial':
-        tn, fp, fn, tp = _confusion_matrix(true, pred, thresholds)
-        
-        # calculate binomial errors
-        effs_errs = np.sqrt((effs * (1-effs)) / (tp+fn))
-        rates_errs = np.sqrt((fpr * (1-fpr)) / (fp+tn))*bg_rate
-        
+      
+      if true is None or pred is None:
+        raise ValueError('true and pred must be provided for error calculation.')
+      
+      if true.shape[0] != pred.shape[0]:
+        raise ValueError('true and pred should be 1D arrays of the same length.')
+      
+      # could have used sklearn.confusion_matrix here
+      tn, fp, fn, tp = np.array(
+	[[_confusion_matrix(true, 
+		     list(map(lambda x: x>t, pred)))] for t in thresholds]).T
+	
+      # calculate binomial errors
+      effs_errs = np.sqrt((effs * (1-effs)) / (tp+fn))
+      rates_errs = np.sqrt((fpr * (1-fpr)) / (fp+tn))*bg_rate
+      
 
-    # rate in Hz
+    # get rate in kHz by default
+    rates = np.divide(rates, 1000)
+    rates_errs = np.divide(rates_errs, 1000)
+
     return rates, rates_errs, effs, effs_errs
 
 
@@ -105,25 +97,35 @@ def optimal_eff_rate(effs, rates, effs_errs=None, rates_errs=None):
     
     if effs.shape != rates.shape:
         raise ValueError(f"Shapes {effs.shape} and {rates.shape} are not aligned.")
-    
-    _rs = set()
-    _es = []
+
+
+    uniq_rates = set()
+    opt_effs = []
     
     # store indices of optimal efficiencies
     # for indexing pre-computed errors
-    _idx = []
+    idx = []
     
-    for idx, i in enumerate(effs):
-        if not rates[idx] in _rs:
-            _rs.add(rates[idx])
-            _es.append(i)
-            _idx.append(idx)
-        elif i > _es[-1]:
-            _es[-1] = i
-            _idx[-1] = idx
+    for _idx, i in enumerate(effs):
+        if not rates[_idx] in uniq_rates:
+            uniq_rates.add(rates[_idx])
+            opt_effs.append(i)
+            idx.append(_idx)
+        elif i > opt_effs[-1]:
+            opt_effs[-1] = i
+            idx[-1] = _idx
         
+    if effs_errs is not None:
+      effs_errs = np.take(effs_errs, idx)
+    else:
+      effs_errs = np.zeros(opt_effs.shape)
+	
     
-    effs_errs = np.take(effs_errs, _idx)
-    rates_errs = np.take(rates_errs, _idx)
-    
-    return sorted(list(_es)), sorted(list(_rs)), effs_errs, rates_errs
+    if rates_errs is not None:
+      rates_errs = np.take(rates_errs, idx)
+    else:
+      rates_errs = np.zeros(uniq_rates.shape)    
+
+
+    return (np.array(opt_effs), np.array(sorted(list(uniq_rates))),
+            effs_errs, rates_errs)
