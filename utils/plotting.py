@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import auc as _auc
+import pandas as pd
 
 def plot_roc(ax, fpr, tpr, xlabel=None, ylabel=None, 
              legend=False, auc=True, **kwargs):
@@ -69,10 +70,28 @@ def plot_eff_rate(ax, effs, rates, effs_errs=None, rates_errs=None,
     
     
     
+def plot_resources(ax, build_result, relative=True, use_percentage=True):
+      
+  res = ['BRAM_18K', 'DSP48E', 'FF', 'LUT']
+    
+  abs_usage = [float(build_result[r]) for r in res if r in res]
+  rel_usage = [abs_usage[i] / float(build_result['Available' + r])
+              for i, r in enumerate(res) if r in res]
+    
+  data = pd.DataFrame(data={'resource': [r for r in res],
+                            'usage': abs_usage,
+                            'rel_usage': rel_usage})
     
     
-    
-    
+  if relative:
+    if use_percentage:
+      ax.bar(res, data['rel_usage']*100.)
+    else:
+      ax.bar(res, data['rel_usage'])
+  else:
+    ax.bar(res, abs_usage)
+        
+  return data
     
     
     
