@@ -1,13 +1,74 @@
- 
+
 ### Copied and modified from
 ### https://github.com/fastmachinelearning/hls4ml/
-### blob/3d80b3302a7c58c6aa270eff105127da9f7c3509/hls4ml/report/vivado_report.py#L99 ###
 
 from __future__ import print_function
 import os
 import re
 import xml.etree.ElementTree as ET
+from hls4ml.converters import convert_from_keras_model
 from hls4ml.report.vivado_report import _parse_build_script, _find_solutions
+import yaml
+from qkeras.utils import _add_supported_quantized_objects
+from tensorflow.keras.models import load_model
+
+def parse_yaml_config_no_model(config_file):
+  """
+  Parse the hls4ml YAML config file without loading in the stored model,
+  as for qkeras models the custom objects aren't recognised.
+  
+  Parameters:
+    path: str
+        Config file path e.g. '/path/to/model/hls4ml_prj/hls4ml_config.yml'
+        
+  Returns:
+    config: dict
+        The parsed YAML config.
+  """
+  
+  def construct_keras_model(loader, node):
+    return
+  
+  yaml.add_constructor(u'!keras_model', construct_keras_model, Loader=yaml.SafeLoader)
+  
+  print('Loading configuration from', config_file)
+  with open(config_file, 'r') as file:
+    parsed_config = yaml.load(file, Loader=yaml.SafeLoader)
+  
+  return parsed_config
+
+
+def load_qkeras_hls_model(path):
+  """
+  Load a qkeras model from a hls4ml project.
+  
+  Parameters:
+    path: str
+        Model path e.g. '/path/to/model/hls4ml_prj/'
+        
+  Returns:
+    hls_model: HLSModel
+        The reconstructed HLSModel object that is based on a QKeras model.
+  """
+  
+  co = {}
+  _add_supported_quantized_objects(co)
+  # load qkeras model
+  qkeras_model = load_model(path + 'keras_model.h5', custom_objects=co)
+  
+  # parse the hls4ml config file without loading the model from 'keras_model.h5'
+  cfg = parse_yaml_config_no_model(path + 'hls4ml_config.yml')
+  
+  hls_model = convert_from_keras_model(qkeras_model,
+                                                         hls_config=cfg['HLSConfig'],
+                                                        output_dir=cfg['OutputDir'],
+                                                        fpga_part=cfg['XilinxPart'],
+                                                        clock_period=cfg['ClockPeriod'],
+                                                        io_type=cfg['IOType'],
+                                                        project_name=cfg['ProjectName'])
+  
+  return hls_model
+
 
 def parse_vivado_impl_report(hls_dir):
 	if not os.path.exists(hls_dir):
