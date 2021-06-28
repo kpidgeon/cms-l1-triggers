@@ -1,5 +1,5 @@
 import numpy as np
-
+from sklearn.metrics import confusion_matrix
 
 
 def _confusion_matrix(true, pred):
@@ -21,6 +21,22 @@ def _confusion_matrix(true, pred):
     
     return tn, fp, fn, tp
 
+
+def custom_roc(pred, true, discrim_thresholds=None):
+  
+  if discrim_thresholds is None:
+    discrim_thresholds = [2.] + [i for i in np.arange(0, 1., .001)]
+  
+  tn, fp, fn, tp = np.array(
+    [[_confusion_matrix(true, 
+                        list(map(lambda x: x>t, pred)))] for t in discrim_thresholds]).T
+    
+  fpr = fp / (fp + tn)
+  tpr = tp / (tp + fn)
+  
+  return fpr, tpr, discrim_thresholds
+  
+  
 
 
 def eff_rate(fpr, tpr, thresholds, bg_rate, true=None, pred=None, errors=None):
@@ -75,6 +91,7 @@ def eff_rate(fpr, tpr, thresholds, bg_rate, true=None, pred=None, errors=None):
       if true.shape[0] != pred.shape[0]:
         raise ValueError('true and pred should be 1D arrays of the same length.')
       
+      print('Calculating errors')
       # could have used sklearn.confusion_matrix here
       tn, fp, fn, tp = np.array(
 	[[_confusion_matrix(true, 

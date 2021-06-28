@@ -6,10 +6,10 @@ void serial2parallel( T in[N_OUT], T out[N_OUT] ){
 		#pragma HLS interface ap_none port=out
 		#pragma HLS interface ap_fifo port=in
 //        #pragma HLS stream variable=in depth=FRAMES
-		#pragma HLS array_reshape variable=out complete
+		//#pragma HLS array_reshape variable=out complete
         #pragma HLS array_partition variable=in cyclic factor=N_IN
 
-//        #pragma HLS array_partition variable=out
+        #pragma HLS array_partition variable=out complete
 
         T tmp[N_OUT];
         #pragma HLS array_partition variable=tmp

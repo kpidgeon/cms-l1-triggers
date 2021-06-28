@@ -54,10 +54,10 @@ def load_qkeras_hls_model(path):
   co = {}
   _add_supported_quantized_objects(co)
   # load qkeras model
-  qkeras_model = load_model(path + 'keras_model.h5', custom_objects=co)
+  qkeras_model = load_model(os.path.join(path, 'keras_model.h5'), custom_objects=co)
   
   # parse the hls4ml config file without loading the model from 'keras_model.h5'
-  cfg = parse_yaml_config_no_model(path + 'hls4ml_config.yml')
+  cfg = parse_yaml_config_no_model(os.path.join(path, 'hls4ml_config.yml'))
   
   hls_model = convert_from_keras_model(qkeras_model,
                                                          hls_config=cfg['HLSConfig'],
@@ -68,6 +68,15 @@ def load_qkeras_hls_model(path):
                                                         project_name=cfg['ProjectName'])
   
   return hls_model
+
+
+def load_qkeras_model(path):
+  co = {}
+  _add_supported_quantized_objects(co)
+  # load qkeras model
+  qkeras_model = load_model(os.path.join(path, 'keras_model.h5'), custom_objects=co)
+  
+  return qkeras_model
 
 
 def parse_vivado_impl_report(hls_dir):

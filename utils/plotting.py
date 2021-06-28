@@ -82,14 +82,14 @@ def plot_resources(ax, build_result, relative=True, use_percentage=True):
                             'usage': abs_usage,
                             'rel_usage': rel_usage})
     
-    
-  if relative:
-    if use_percentage:
-      ax.bar(res, data['rel_usage']*100.)
+  if ax is not None:
+    if relative:
+      if use_percentage:
+        ax.bar(res, data['rel_usage']*100.)
+      else:
+        ax.bar(res, data['rel_usage'])
     else:
-      ax.bar(res, data['rel_usage'])
-  else:
-    ax.bar(res, abs_usage)
+      ax.bar(res, abs_usage)
         
   return data
     
